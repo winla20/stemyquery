@@ -1,0 +1,10 @@
+torch>=2.0
+transformers>=4.30
+rank-bm25>=0.2.2
+chromadb>=0.4
+pubmed-parser>=0.2.1
+lxml>=4.9
+pydantic>=2.0
+fastapi>=0.100
+uvicorn>=0.22
+streamlit>=1.28

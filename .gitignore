@@ -1,0 +1,35 @@
+# Virtual env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Index and large data (rebuild or add small sample for demo)
+data/index/*
+!data/index/.gitkeep
+data/raw/*.htm
+data/raw/*.html
+data/raw/*.xml
+data/raw/*.nxml
+!data/raw/.gitkeep
+
+# Env and secrets
+.env
+.env.local
+*.pkl
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ChromaDB
+*.sqlite3

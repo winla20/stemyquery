@@ -1,0 +1,257 @@
+{
+  "recall_at_5": 0.9,
+  "mrr": 0.8219999999999998,
+  "n_queries": 50,
+  "details": [
+    {
+      "query": "electrophysiology assessment metrics",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "What electrophysiology metrics are used?",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "APD action potential duration",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "calcium transient duration CaTD",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "contractile function measurement",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "How do they assess contractile function?",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "contractile force metrics",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "traction force microscopy",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "peak twitch force maximal force",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "gene expression markers maturity",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "Structural maturity evaluation markers?",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "MYH6 MYH7 TNNT2",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "structural maturity gene expression",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "contractile metrics used in study",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "electrophysiology readouts",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "iPSC cardiomyocyte assessment",
+      "found_rank": 1,
+      "top_section": "Introduction"
+    },
+    {
+      "query": "assessment categories structural contractile electrophysiology",
+      "found_rank": null,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "hiPSC-CM evaluation methods",
+      "found_rank": 5,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "force measurement mN",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "Peak force maximal force table",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "electrophysiology calcium transient",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "calcium transient amplitude",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "APD90 measurement",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "maturity markers gene expression",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "benchmarking progress cardiomyocyte models",
+      "found_rank": 1,
+      "top_section": "Introduction"
+    },
+    {
+      "query": "in vitro models assessment",
+      "found_rank": 4,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "electrophysiology contractile structural gene expression",
+      "found_rank": 5,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "methods electrophysiology",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "methods contractile",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "methods gene expression",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "table contractile metrics",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "metrics unit mN",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "disease modeling cardiomyocytes",
+      "found_rank": 1,
+      "top_section": "Introduction"
+    },
+    {
+      "query": "functional assessment cardiomyocytes",
+      "found_rank": 5,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "evaluation techniques maturation",
+      "found_rank": null,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "assessment techniques fabrication maturation",
+      "found_rank": null,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "electrophysiology results",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "contractility results",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "structural assessment",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "maturation assessment",
+      "found_rank": null,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "evaluation metrics cardiomyocyte",
+      "found_rank": 4,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "measurement methods",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "force metrics contractile",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "expression markers TNNT2",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "MYH6 MYH7 markers",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Gene expression markers"
+    },
+    {
+      "query": "action potential duration",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "calcium transient",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    },
+    {
+      "query": "twitch force",
+      "found_rank": 1,
+      "top_section": "Methods \u2192 Contractile function"
+    },
+    {
+      "query": "cardiomyocyte functionality",
+      "found_rank": 1,
+      "top_section": "Introduction"
+    },
+    {
+      "query": "benchmarking assessment",
+      "found_rank": null,
+      "top_section": "Methods \u2192 Electrophysiology assessment"
+    }
+  ]
+}
