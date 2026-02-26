@@ -1,5 +1,7 @@
 """Chunk data model."""
 
+import json
+import sqlite3
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -85,6 +87,19 @@ class Chunk:
             text=d["text"],
             bm25_fields=d.get("bm25_fields", []),
             dense_vector=d.get("dense_vector"),
+        )
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Chunk":
+        return cls(
+            chunk_id=row["chunk_id"],
+            paper_id=row["paper_id"],
+            chunk_type=ChunkType(row["chunk_type"]),
+            section_path=json.loads(row["section_path"]),
+            page_start=row["page_start"],
+            page_end=row["page_end"],
+            text=row["text"],
+            bm25_fields=json.loads(row["bm25_fields"]),
         )
 
 

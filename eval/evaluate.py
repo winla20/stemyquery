@@ -8,39 +8,41 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from atheria.config import INDEX_DIR
-from atheria.index.build_index import load_index
-from atheria.retrieval.hybrid import hybrid_retrieve
+from atheria.db.connection import get_connection
+from atheria.db.migrations import apply_migrations
+from atheria.index.build_index import load_state
+from atheria.index.dense_index import SqliteVecAdapter
 from atheria.retrieval.formatter import format_results
+from atheria.retrieval.hybrid import hybrid_retrieve
 
 
 def _section_match(retrieved_path: str, correct_path: str) -> bool:
     """Check if retrieved section path matches correct (substring or equality)."""
     if not correct_path or not retrieved_path:
         return False
-    # Normalize: collapse arrows/spaces for flexible matching
+
     def norm(s: str) -> str:
         return " ".join(s.replace("→", " ").replace(">", " ").lower().split())
+
     r = norm(retrieved_path)
     c = norm(correct_path)
     return c in r or r in c
 
 
 def evaluate(
-    queries_path: str | Path = None,
-    index_dir: str | Path = None,
+    queries_path: str | Path | None = None,
     top_n: int = 5,
 ) -> dict:
-    """
-    Run evaluation. Returns dict with Recall@5, MRR, and per-query details.
-    """
+    """Run evaluation. Returns dict with Recall@5, MRR, and per-query details."""
     queries_path = queries_path or ROOT / "eval" / "queries.json"
-    index_dir = index_dir or INDEX_DIR
 
     with open(queries_path) as f:
         queries = json.load(f)
 
-    paper_by_id, chunk_by_id, bm25, dense = load_index(index_dir)
+    conn = get_connection()
+    apply_migrations(conn)
+    paper_by_id, chunk_by_id, bm25 = load_state(conn)
+    dense = SqliteVecAdapter(conn)
 
     recall_at_5 = 0.0
     mrr_sum = 0.0
@@ -63,7 +65,6 @@ def evaluate(
         )
         formatted = format_results(results, paper_by_id)
 
-        # Match: either correct_section_path substring match or correct_chunk_ids
         found_rank = None
         for rank, sp in enumerate(formatted[:top_n], 1):
             if correct_chunk_ids and sp.chunk_id in correct_chunk_ids:
@@ -83,6 +84,8 @@ def evaluate(
             "top_section": formatted[0].section_path if formatted else None,
         })
 
+    conn.close()
+
     return {
         "recall_at_5": recall_at_5 / n if n else 0,
         "mrr": mrr_sum / n if n else 0,
@@ -97,7 +100,6 @@ def main():
     print("MRR:", f"{result['mrr']:.3f}")
     print("N queries:", result["n_queries"])
 
-    # Optionally write details
     out_path = ROOT / "eval" / "eval_results.json"
     with open(out_path, "w") as f:
         json.dump(result, f, indent=2)

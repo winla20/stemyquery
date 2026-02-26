@@ -1,56 +1,48 @@
-"""Build BM25 + dense index from papers."""
+"""Build BM25 + dense index from papers, persisting everything to SQLite."""
 
-import json
 from pathlib import Path
 
-from atheria.config import (
-    CHROMA_PATH,
-    BM25_PATH,
-    CHUNKS_PATH,
-    PAPERS_PATH,
-    INDEX_DIR,
-    RAW_DIR,
-)
-from atheria.models.paper import Paper
-from atheria.models.chunk import Chunk
-from atheria.ingest.pmc_parser import parse_pmc, parse_raw_text
-from atheria.ingest.chunker import chunk_document
+from atheria.config import RAW_DIR
+from atheria.db.connection import get_connection
+from atheria.db.migrations import apply_migrations
+from atheria.db.repositories.chunk_repo import ChunkRepository
+from atheria.db.repositories.paper_repo import PaperRepository
 from atheria.index.bm25_index import BM25Index
-from atheria.index.dense_index import DenseIndex
+from atheria.index.dense_index import encode_articles, store_embeddings, clear_embeddings
+from atheria.ingest.chunker import chunk_document
+from atheria.ingest.pmc_parser import parse_pmc, parse_raw_text
+from atheria.models.chunk import Chunk
+from atheria.models.paper import Paper
 
 
 def build_index(
     input_path: str | Path,
-    output_dir: str | Path | None = None,
 ) -> tuple[list[Paper], list[Chunk]]:
-    """
-    Parse paper(s), chunk, and build BM25 + dense index.
+    """Parse paper(s), chunk, and build BM25 + dense index in SQLite.
 
     Input can be:
-    - Path to PMC XML/HTML file
-    - Path to directory of PMC files
-    - Path to raw .txt file (fallback)
-
-    Returns (papers, chunks).
+    - Path to a PMC XML/HTML file
+    - Path to a directory of PMC files
+    - Path to a raw .txt fallback file
     """
     input_path = Path(input_path)
-    output_dir = Path(output_dir) if output_dir else INDEX_DIR
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    chroma_path = output_dir / "chroma"
-    bm25_path = output_dir / "bm25"
-
-    papers: list[Paper] = []
-    all_chunks: list[Chunk] = []
 
     # Collect files to process
     files: list[Path] = []
     if input_path.is_file():
         files = [input_path]
     elif input_path.is_dir():
-        files = list(input_path.glob("*.xml")) + list(input_path.glob("*.nxml")) + list(input_path.glob("*.html")) + list(input_path.glob("*.htm"))
+        files = (
+            list(input_path.glob("*.xml"))
+            + list(input_path.glob("*.nxml"))
+            + list(input_path.glob("*.html"))
+            + list(input_path.glob("*.htm"))
+        )
         if not files:
             files = list(input_path.glob("*.txt"))
+
+    papers: list[Paper] = []
+    all_chunks: list[Chunk] = []
 
     for f in files:
         doc = parse_pmc(f)
@@ -73,40 +65,59 @@ def build_index(
     if not all_chunks:
         return papers, all_chunks
 
-    # Build BM25 index
-    bm25 = BM25Index()
-    bm25.add_chunks(all_chunks)
-    bm25.save(str(bm25_path))
+    conn = get_connection()
+    apply_migrations(conn)
 
-    # Build dense index (reset to overwrite previous)
-    dense = DenseIndex(persist_path=str(chroma_path))
-    dense.add_chunks(all_chunks, reset=True)
+    paper_repo = PaperRepository(conn)
+    chunk_repo = ChunkRepository(conn)
 
-    # Persist chunks and papers for retrieval
-    chunks_data = [c.to_dict() for c in all_chunks]
-    papers_data = [p.to_dict() for p in papers]
-    with open(output_dir / "chunks.json", "w") as fp:
-        json.dump(chunks_data, fp, indent=2)
-    with open(output_dir / "papers.json", "w") as fp:
-        json.dump(papers_data, fp, indent=2)
+    # Write papers and chunks to DB
+    for paper in papers:
+        paper_repo.insert(paper)
+    for chunk in all_chunks:
+        chunk_repo.insert(chunk)
 
+    # Build and encode embeddings
+    articles = [
+        [" → ".join(c.section_path) or "Section", c.text]
+        for c in all_chunks
+    ]
+    print(f"Encoding {len(all_chunks)} chunks with MedCPT Article Encoder...")
+    embeddings = encode_articles(articles, batch_size=32)
+
+    # Store in sqlite-vec (clear existing for a fresh index)
+    clear_embeddings(conn)
+    store_embeddings(conn, all_chunks, embeddings)
+
+    conn.commit()
+    conn.close()
+
+    print(f"Indexed {len(papers)} paper(s), {len(all_chunks)} chunk(s).")
     return papers, all_chunks
 
 
-def load_index(output_dir: str | Path | None = None) -> tuple[dict[str, Paper], dict[str, Chunk], BM25Index, DenseIndex]:
-    """Load existing index. Returns (paper_by_id, chunk_by_id, bm25, dense)."""
-    from atheria.models.chunk import ChunkType
+def load_state(
+    conn=None,
+) -> tuple[dict[str, Paper], dict[str, Chunk], BM25Index]:
+    """Load papers, chunks, and rebuild the in-memory BM25 index from SQLite.
 
-    output_dir = Path(output_dir) if output_dir else INDEX_DIR
-    chunks_data = json.loads((output_dir / "chunks.json").read_text())
-    papers_data = json.loads((output_dir / "papers.json").read_text())
+    Returns (paper_by_id, chunk_by_id, bm25).
+    Dense retrieval is now a DB query — use SqliteVecAdapter from dense_index.
+    """
+    if conn is None:
+        conn = get_connection()
 
-    papers = {str(p["paper_id"]): Paper.from_dict(p) for p in papers_data}
-    chunks = {c["chunk_id"]: Chunk.from_dict(c) for c in chunks_data}
+    paper_repo = PaperRepository(conn)
+    chunk_repo = ChunkRepository(conn)
+
+    papers = paper_repo.get_all_as_dict()
+    all_chunks = chunk_repo.load_all_for_bm25()
+
+    # Rebuild full Chunk objects for retrieval hydration
+    chunk_rows = conn.execute("SELECT * FROM chunks").fetchall()
+    chunks = {r["chunk_id"]: Chunk.from_row(r) for r in chunk_rows}
 
     bm25 = BM25Index()
-    bm25.load(str(output_dir / "bm25"))
+    bm25.add_chunks(all_chunks)
 
-    dense = DenseIndex(persist_path=str(output_dir / "chroma"))
-
-    return papers, chunks, bm25, dense
+    return papers, chunks, bm25

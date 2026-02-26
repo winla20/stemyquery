@@ -1,5 +1,7 @@
 """Paper data model."""
 
+import json
+import sqlite3
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID, uuid4
@@ -53,4 +55,15 @@ class Paper:
             source_url=d.get("source_url"),
             pdf_path=d.get("pdf_path"),
             metadata=d.get("metadata", {}),
+        )
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Paper":
+        return cls(
+            paper_id=UUID(row["paper_id"]),
+            title=row["title"],
+            pmid=row["pmid"],
+            source_url=row["source_url"],
+            pdf_path=row["pdf_path"],
+            metadata=json.loads(row["metadata"]),
         )

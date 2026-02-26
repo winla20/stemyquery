@@ -22,7 +22,8 @@ class BM25Index:
         """Add chunks; each chunk must have chunk_id and bm25_fields."""
         for chunk in chunks:
             # Combine all bm25_fields into one document for BM25
-            combined = " ".join(getattr(chunk, "bm25_fields", [chunk.text]))
+            fields = getattr(chunk, "bm25_fields", None)
+            combined = " ".join(fields) if fields else getattr(chunk, "text", "")
             tokens = _tokenize(combined)
             self._tokenized_corpus.append(tokens)
             self._chunk_ids.append(chunk.chunk_id)
@@ -40,27 +41,3 @@ class BM25Index:
         indexed.sort(key=lambda x: x[1], reverse=True)
         return indexed[:k]
 
-    def save(self, path: str | Path) -> None:
-        """Persist index to directory (pickle corpus + mapping)."""
-        import json
-        import pickle
-
-        path = Path(path)
-        path.mkdir(parents=True, exist_ok=True)
-        with open(path / "corpus.pkl", "wb") as f:
-            pickle.dump(self._tokenized_corpus, f)
-        with open(path / "chunk_ids.json", "w") as f:
-            json.dump(self._chunk_ids, f)
-
-    def load(self, path: str | Path) -> None:
-        """Load index from directory."""
-        import json
-        import pickle
-
-        path = Path(path)
-        with open(path / "corpus.pkl", "rb") as f:
-            self._tokenized_corpus = pickle.load(f)
-        with open(path / "chunk_ids.json") as f:
-            self._chunk_ids = json.load(f)
-        if self._tokenized_corpus:
-            self._bm25 = BM25Okapi(self._tokenized_corpus)

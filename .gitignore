@@ -11,25 +11,26 @@ __pycache__/
 dist/
 build/
 
-# Index and large data (rebuild or add small sample for demo)
-data/index/*
-!data/index/.gitkeep
+# Large raw inputs (keep .gitkeep)
 data/raw/*.htm
 data/raw/*.html
 data/raw/*.xml
 data/raw/*.nxml
 !data/raw/.gitkeep
 
+# SQLite database (rebuilt by atheria build)
+data/atheria.db
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
 # Env and secrets
 .env
 .env.local
-*.pkl
 
 # IDE / OS
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-
-# ChromaDB
-*.sqlite3
