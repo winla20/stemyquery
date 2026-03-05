@@ -12,10 +12,6 @@ dist/
 build/
 
 # Large raw inputs (keep .gitkeep)
-data/raw/*.htm
-data/raw/*.html
-data/raw/*.xml
-data/raw/*.nxml
 !data/raw/.gitkeep
 
 # SQLite database (rebuilt by atheria build)

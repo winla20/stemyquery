@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<article xmlns="http://www.ncbi.nlm.nih.gov/JATS1.0">
+  <front>
+    <article-meta>
+      <title-group>
+        <article-title>Sample iPSC-derived cardiomyocyte assessment study</article-title>
+      </title-group>
+      <article-id pub-id-type="pmid">12345678</article-id>
+      <article-id pub-id-type="pmc">PMC9999999</article-id>
+    </article-meta>
+    <abstract>
+      <p>We assessed structural maturity, contractile function, electrophysiology, and gene expression in hiPSC-CMs.</p>
+    </abstract>
+  </front>
+  <body>
+    <sec>
+      <title>Introduction</title>
+      <p>Induced pluripotent stem cell-derived cardiomyocytes are widely used for disease modeling.</p>
+    </sec>
+    <sec>
+      <title>Methods</title>
+      <sec>
+        <title>Electrophysiology assessment</title>
+        <p>Action potential duration (APD) and calcium transient duration (CaTD) were measured. Electrophysiology metrics included APD90 and calcium transient amplitude.</p>
+      </sec>
+      <sec>
+        <title>Contractile function</title>
+        <p>Contractile force was assessed using traction force microscopy. Peak twitch force and maximal force were recorded.</p>
+        <table-wrap>
+          <caption>Contractile metrics used in the study</caption>
+          <table>
+            <tr><th>Metric</th><th>Unit</th></tr>
+            <tr><td>Peak force</td><td>mN</td></tr>
+            <tr><td>Maximal force</td><td>mN</td></tr>
+          </table>
+        </table-wrap>
+      </sec>
+      <sec>
+        <title>Gene expression markers</title>
+        <p>Structural maturity was evaluated using gene expression markers including MYH6, MYH7, and TNNT2.</p>
+      </sec>
+    </sec>
+  </body>
+</article>
