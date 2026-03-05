@@ -55,5 +55,23 @@ class PaperRepository:
             result.append(d)
         return result
 
+    def get_by_pmid(self, pmid: str) -> "Paper | None":
+        row = self.conn.execute(
+            "SELECT * FROM papers WHERE pmid = ?", [pmid]
+        ).fetchone()
+        return Paper.from_row(row) if row else None
+
+    def get_by_source_url(self, source_url: str) -> "Paper | None":
+        row = self.conn.execute(
+            "SELECT * FROM papers WHERE source_url = ?", [source_url]
+        ).fetchone()
+        return Paper.from_row(row) if row else None
+
+    def get_by_normalized_title(self, title: str) -> "Paper | None":
+        row = self.conn.execute(
+            "SELECT * FROM papers WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))", [title]
+        ).fetchone()
+        return Paper.from_row(row) if row else None
+
     def count(self) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]

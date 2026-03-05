@@ -441,6 +441,163 @@ def parse_pmc(path: str | Path) -> ParsedDocument | None:
     return ParsedDocument(title=title, abstract=abstract, blocks=blocks, metadata=metadata)
 
 
+def parse_pdf(path: str | Path) -> ParsedDocument | None:
+    """
+    Parse a PDF file using PyMuPDF (fitz).
+
+    Heading detection heuristic:
+    - Compute median font size across all text spans → body size
+    - Spans with font_size >= body_size * 1.3 AND len(text) < 120 → heading
+    - Title: largest-font block on page 1
+    """
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        return None
+
+    path = Path(path)
+    if not path.exists():
+        return None
+
+    try:
+        doc = fitz.open(str(path))
+    except Exception:
+        return None
+
+    # Collect all spans with font size info
+    all_spans: list[tuple[int, float, str]] = []  # (page, size, text)
+    page_blocks: list[tuple[int, float, str]] = []  # (page, size, text)
+
+    for page_num, page in enumerate(doc, start=1):
+        blocks = page.get_text("dict", flags=fitz.TEXT_PRESERVE_WHITESPACE)["blocks"]
+        for block in blocks:
+            if block.get("type") != 0:  # text block
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    text = span.get("text", "").strip()
+                    size = span.get("size", 0.0)
+                    if text:
+                        all_spans.append((page_num, size, text))
+                        page_blocks.append((page_num, size, text))
+
+    if not all_spans:
+        doc.close()
+        return None
+
+    # Compute median font size for body threshold
+    sizes = sorted(s for _, s, _ in all_spans)
+    mid = len(sizes) // 2
+    body_size = sizes[mid] if sizes else 10.0
+    heading_threshold = body_size * 1.3
+
+    # Extract title: largest-font readable block on page 1, skipping known watermarks
+    _WATERMARKS = {
+        "hhs public access", "author manuscript", "nih-pa author manuscript",
+        "author's manuscript", "preprint", "accepted manuscript",
+    }
+
+    def _looks_like_title(text: str) -> bool:
+        if len(text) < 4:
+            return False
+        if text.startswith("%PDF"):
+            return False
+        if text.lower().strip() in _WATERMARKS:
+            return False
+        non_print = sum(1 for c in text if ord(c) < 32 or ord(c) > 126)
+        if non_print / max(len(text), 1) > 0.1:
+            return False
+        return True
+
+    page1_spans = [
+        (size, text) for pg, size, text in all_spans if pg == 1 and _looks_like_title(text)
+    ]
+    title = ""
+    if page1_spans:
+        best_size = max(size for size, _ in page1_spans)
+        # Join all consecutive spans at the best font size (multi-line titles)
+        title_parts = [text for size, text in page1_spans if size == best_size]
+        title = _normalize_whitespace(" ".join(title_parts))
+
+    # Build blocks tracking section path from headings
+    blocks_out: list[ParsedBlock] = []
+    section_path: list[str] = []
+    current_para: list[str] = []
+    current_page = 1
+
+    def _flush_para(para_lines: list[str], path: list[str], page: int) -> None:
+        text = _normalize_whitespace(" ".join(para_lines))
+        if text:
+            blocks_out.append(
+                ParsedBlock(
+                    block_type="paragraph",
+                    text=text,
+                    section_path=path.copy(),
+                    page=page,
+                )
+            )
+
+    prev_page = 1
+    for page_num, size, text in page_blocks:
+        text = _normalize_whitespace(text)
+        if not text:
+            continue
+
+        is_heading = size >= heading_threshold and len(text) < 120
+
+        if is_heading:
+            _flush_para(current_para, section_path, prev_page)
+            current_para = []
+            # Update section path: replace last level if same depth, else append
+            if section_path and size >= heading_threshold * 1.1:
+                # Major heading → reset path
+                section_path = [text]
+            else:
+                section_path = section_path[:-1] + [text] if section_path else [text]
+        else:
+            if page_num != prev_page and current_para:
+                _flush_para(current_para, section_path, prev_page)
+                current_para = []
+            current_para.append(text)
+
+        prev_page = page_num
+
+    _flush_para(current_para, section_path, prev_page)
+
+    # Prefer PDF metadata title (most reliable) over text heuristic
+    meta = doc.metadata or {}
+    if meta.get("title", "").strip():
+        title = _normalize_whitespace(meta["title"])
+
+    # Extract DOI: from PDF metadata keywords/subject, then page text
+    doi = ""
+    for field in ("keywords", "subject"):
+        m = re.search(r'10\.\d{4,}/\S+', meta.get(field, ""))
+        if m:
+            doi = m.group(0).rstrip(".,;)")
+            break
+    if not doi:
+        page1_text = doc[0].get_text() if len(doc) > 0 else ""
+        m = re.search(r'10\.\d{4,}/\S+', page1_text)
+        if m:
+            doi = m.group(0).rstrip(".,;)")
+
+    doc.close()
+
+    metadata: dict[str, Any] = {"source_format": "pdf"}
+    if doi:
+        metadata["doi"] = doi
+
+    abstract = blocks_out[0].text if blocks_out else ""
+
+    return ParsedDocument(
+        title=title,
+        abstract=abstract,
+        blocks=blocks_out,
+        metadata=metadata,
+    )
+
+
 def parse_raw_text(path: str | Path) -> ParsedDocument | None:
     """
     Fallback: parse raw text file (e.g., from PDF extraction).

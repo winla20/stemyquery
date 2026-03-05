@@ -1,4 +1,4 @@
-import type { ChunkContextOut, Paper, QueryResponse } from "../types";
+import type { ChunkContextOut, Paper, QueryResponse, Topic, TopicDrillDown } from "../types";
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -30,4 +30,12 @@ export async function getPapers(): Promise<Paper[]> {
 
 export async function getChunkContext(chunkId: string): Promise<ChunkContextOut> {
   return request<ChunkContextOut>(`/api/chunks/${encodeURIComponent(chunkId)}/context`);
+}
+
+export async function getTopics(): Promise<Topic[]> {
+  return request<Topic[]>("/api/topics");
+}
+
+export async function getTopicChunks(topic: string): Promise<TopicDrillDown> {
+  return request<TopicDrillDown>(`/api/topics/${encodeURIComponent(topic)}/chunks`);
 }

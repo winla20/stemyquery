@@ -38,7 +38,32 @@ CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(
 """
 
 
+_DEDUP_SQL = """
+DELETE FROM papers WHERE rowid NOT IN (
+    SELECT MIN(rowid) FROM papers GROUP BY LOWER(TRIM(title))
+);
+"""
+
+# Backfill doi column from metadata JSON for papers indexed before DOI extraction was added
+_BACKFILL_DOI_SQL = """
+UPDATE papers
+SET doi = JSON_EXTRACT(metadata, '$.doi')
+WHERE doi IS NULL AND JSON_EXTRACT(metadata, '$.doi') IS NOT NULL;
+"""
+
+# Remove papers that were incorrectly indexed (raw PDF binary or known watermark titles)
+_BAD_PDF_CLEANUP_SQL = """
+DELETE FROM papers WHERE title LIKE '%PDF-%'
+    OR LOWER(TRIM(title)) = 'hhs public access'
+    OR LOWER(TRIM(title)) = 'author manuscript'
+    OR LOWER(TRIM(title)) = '';
+"""
+
+
 def apply_migrations(conn: sqlite3.Connection) -> None:
     """Apply schema (idempotent — all statements use IF NOT EXISTS)."""
     conn.executescript(SCHEMA_SQL)
+    conn.executescript(_BAD_PDF_CLEANUP_SQL)
+    conn.executescript(_DEDUP_SQL)
+    conn.executescript(_BACKFILL_DOI_SQL)
     conn.commit()

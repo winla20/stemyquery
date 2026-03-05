@@ -19,7 +19,7 @@ _query_model: AutoModel | None = None
 
 def _ensure_article_model() -> None:
     global _article_tokenizer, _article_model
-    if _article_tokenizer is None:
+    if _article_model is None:
         _article_tokenizer = AutoTokenizer.from_pretrained(MEDCPT_ARTICLE_ENCODER)
         _article_model = AutoModel.from_pretrained(MEDCPT_ARTICLE_ENCODER)
         _article_model.eval()
@@ -27,7 +27,7 @@ def _ensure_article_model() -> None:
 
 def _ensure_query_model() -> None:
     global _query_tokenizer, _query_model
-    if _query_tokenizer is None:
+    if _query_model is None:
         _query_tokenizer = AutoTokenizer.from_pretrained(MEDCPT_QUERY_ENCODER)
         _query_model = AutoModel.from_pretrained(MEDCPT_QUERY_ENCODER)
         _query_model.eval()
@@ -109,18 +109,14 @@ def retrieve_dense(
         sql = """
             SELECT chunk_id, distance
             FROM vec_chunks
-            WHERE embedding MATCH ? AND paper_id = ?
-            ORDER BY distance
-            LIMIT ?
+            WHERE embedding MATCH ? AND k = ? AND paper_id = ?
         """
-        rows = conn.execute(sql, [blob, paper_id, k]).fetchall()
+        rows = conn.execute(sql, [blob, k, paper_id]).fetchall()
     else:
         sql = """
             SELECT chunk_id, distance
             FROM vec_chunks
-            WHERE embedding MATCH ?
-            ORDER BY distance
-            LIMIT ?
+            WHERE embedding MATCH ? AND k = ?
         """
         rows = conn.execute(sql, [blob, k]).fetchall()
 

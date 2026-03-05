@@ -1,14 +1,19 @@
 """FastAPI application and CLI entry point for Atheria."""
 
 import argparse
+import asyncio
+import logging
 import sys
+import threading
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from atheria.api.dependencies import get_bm25_index
-from atheria.api.routers import chunks, ingest, papers, query
+from atheria.api.routers import chunks, ingest, papers, query, topics
+from atheria.config import RAW_DIR
 from atheria.db.connection import get_connection
 from atheria.db.migrations import apply_migrations
 from atheria.db.repositories.chunk_repo import ChunkRepository
@@ -18,14 +23,59 @@ from atheria.retrieval.formatter import format_results
 from atheria.retrieval.hybrid import hybrid_retrieve
 from atheria.schemas.papers import HealthOut
 
+logger = logging.getLogger(__name__)
+
+
+def _auto_ingest_raw_dir(conn) -> None:
+    """Index any new files in RAW_DIR that have not yet been indexed."""
+    from atheria.index.build_index import build_index
+
+    raw_path = Path(RAW_DIR)
+    if not raw_path.exists():
+        return
+
+    files = (
+        list(raw_path.glob("*.xml"))
+        + list(raw_path.glob("*.nxml"))
+        + list(raw_path.glob("*.html"))
+        + list(raw_path.glob("*.htm"))
+        + list(raw_path.glob("*.pdf"))
+    )
+    if not files:
+        return
+
+    indexed = {p.source_url for p in PaperRepository(conn).get_all() if p.source_url}
+    new_files = [f for f in files if str(f.resolve()) not in indexed]
+
+    if not new_files:
+        logger.info("Auto-ingest: all files already indexed.")
+        return
+
+    logger.info("Auto-ingest: indexing %d new file(s)...", len(new_files))
+    for f in new_files:
+        build_index(f, append=True)
+    logger.info("Auto-ingest: done.")
+
+
+def _auto_ingest_background() -> None:
+    """Run auto-ingest in a background thread so startup doesn't block."""
+    try:
+        conn = get_connection()
+        _auto_ingest_raw_dir(conn)
+        conn.close()
+    except Exception:
+        logger.exception("Auto-ingest background thread failed")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: apply schema and warm up the BM25 cache."""
+    """Startup: apply schema, warm up BM25, kick off background auto-ingest."""
     conn = get_connection()
     apply_migrations(conn)
     conn.close()
     get_bm25_index()  # triggers @lru_cache build
+    t = threading.Thread(target=_auto_ingest_background, daemon=True)
+    t.start()
     yield
 
 
@@ -47,6 +97,7 @@ def create_app() -> FastAPI:
     _app.include_router(papers.router, prefix="/api")
     _app.include_router(chunks.router, prefix="/api")
     _app.include_router(ingest.router, prefix="/api")
+    _app.include_router(topics.router, prefix="/api")
 
     @_app.get("/api/health", response_model=HealthOut)
     def health():

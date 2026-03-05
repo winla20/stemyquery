@@ -91,5 +91,32 @@ class ChunkRepository:
         nxt = self.get_by_id(next_id) if next_id else None
         return prev, current, nxt
 
+    def get_all_topics(self) -> list[dict]:
+        """Unique section_path segments with counts via json_each()."""
+        rows = self.conn.execute("""
+            SELECT j.value AS topic,
+                   COUNT(DISTINCT c.chunk_id) AS chunk_count,
+                   COUNT(DISTINCT c.paper_id) AS paper_count
+            FROM chunks c, json_each(c.section_path) AS j
+            WHERE j.value != ''
+            GROUP BY j.value
+            ORDER BY chunk_count DESC
+        """).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_chunks_by_topic(self, topic: str) -> list[dict]:
+        """Chunks where section_path contains `topic`, joined with paper info."""
+        rows = self.conn.execute("""
+            SELECT c.chunk_id, c.paper_id, c.chunk_type, c.section_path,
+                   c.page_start, c.page_end, c.text,
+                   p.title AS paper_title, p.pmid, p.doi
+            FROM chunks c
+            JOIN json_each(c.section_path) AS j
+            JOIN papers p ON c.paper_id = p.paper_id
+            WHERE j.value = ?
+            ORDER BY p.title, c.page_start
+        """, [topic]).fetchall()
+        return [dict(r) for r in rows]
+
     def count(self) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]

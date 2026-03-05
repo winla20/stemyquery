@@ -42,3 +42,34 @@ export interface ChunkContextOut {
   current: ChunkOut;
   next: ChunkOut | null;
 }
+
+export interface Topic {
+  topic: string;
+  chunk_count: number;
+  paper_count: number;
+}
+
+export interface TopicChunk {
+  chunk_id: string;
+  paper_id: string;
+  paper_title: string;
+  chunk_type: string;
+  section_path: string[];
+  page_start: number;
+  page_end: number;
+  snippet: string;
+}
+
+export interface PaperGroup {
+  paper_id: string;
+  paper_title: string;
+  pmid: string | null;
+  doi: string | null;
+  chunks: TopicChunk[];
+}
+
+export interface TopicDrillDown {
+  topic: string;
+  total_chunks: number;
+  papers: PaperGroup[];
+}

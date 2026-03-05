@@ -10,13 +10,25 @@ from atheria.db.repositories.paper_repo import PaperRepository
 from atheria.index.bm25_index import BM25Index
 from atheria.index.dense_index import encode_articles, store_embeddings, clear_embeddings
 from atheria.ingest.chunker import chunk_document
-from atheria.ingest.pmc_parser import parse_pmc, parse_raw_text
+from atheria.ingest.pmc_parser import parse_pdf, parse_pmc, parse_raw_text
 from atheria.models.chunk import Chunk
 from atheria.models.paper import Paper
 
 
+def _is_duplicate(paper_repo: PaperRepository, paper: "Paper", source_url: str) -> bool:
+    """Return True if a paper matching pmid, source_url, or normalized title exists."""
+    if paper.pmid and paper_repo.get_by_pmid(paper.pmid):
+        return True
+    if source_url and paper_repo.get_by_source_url(source_url):
+        return True
+    if paper.title and paper_repo.get_by_normalized_title(paper.title):
+        return True
+    return False
+
+
 def build_index(
     input_path: str | Path,
+    append: bool = False,
 ) -> tuple[list[Paper], list[Chunk]]:
     """Parse paper(s), chunk, and build BM25 + dense index in SQLite.
 
@@ -37,6 +49,7 @@ def build_index(
             + list(input_path.glob("*.nxml"))
             + list(input_path.glob("*.html"))
             + list(input_path.glob("*.htm"))
+            + list(input_path.glob("*.pdf"))
         )
         if not files:
             files = list(input_path.glob("*.txt"))
@@ -44,32 +57,41 @@ def build_index(
     papers: list[Paper] = []
     all_chunks: list[Chunk] = []
 
+    conn = get_connection()
+    apply_migrations(conn)
+    paper_repo = PaperRepository(conn)
+    chunk_repo = ChunkRepository(conn)
+
     for f in files:
-        doc = parse_pmc(f)
+        if f.suffix.lower() == ".pdf":
+            doc = parse_pdf(f)
+        else:
+            doc = parse_pmc(f)
         if doc is None:
             doc = parse_raw_text(f)
         if doc is None:
             continue
 
         metadata = doc.metadata or {}
+        source_url = metadata.get("source_url") or str(f.resolve())
         paper = Paper.create(
             title=doc.title,
             pmid=metadata.get("pmid"),
-            source_url=metadata.get("source_url"),
+            source_url=source_url,
             metadata=metadata,
         )
+
+        if _is_duplicate(paper_repo, paper, source_url):
+            print(f"Skipping duplicate: {paper.title}")
+            continue
+
         papers.append(paper)
         chunks = chunk_document(doc, paper)
         all_chunks.extend(chunks)
 
     if not all_chunks:
+        conn.close()
         return papers, all_chunks
-
-    conn = get_connection()
-    apply_migrations(conn)
-
-    paper_repo = PaperRepository(conn)
-    chunk_repo = ChunkRepository(conn)
 
     # Write papers and chunks to DB
     for paper in papers:
@@ -85,8 +107,9 @@ def build_index(
     print(f"Encoding {len(all_chunks)} chunks with MedCPT Article Encoder...")
     embeddings = encode_articles(articles, batch_size=32)
 
-    # Store in sqlite-vec (clear existing for a fresh index)
-    clear_embeddings(conn)
+    # Store in sqlite-vec (clear existing unless appending to an existing index)
+    if not append:
+        clear_embeddings(conn)
     store_embeddings(conn, all_chunks, embeddings)
 
     conn.commit()
