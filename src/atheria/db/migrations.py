@@ -1,6 +1,11 @@
 """SQLite schema migrations."""
 
 import sqlite3
+import logging
+
+from atheria.db.connection import has_vec0_module
+
+logger = logging.getLogger(__name__)
 
 SCHEMA_SQL = """
 PRAGMA journal_mode=WAL;
@@ -30,6 +35,9 @@ CREATE TABLE IF NOT EXISTS chunks (
 CREATE INDEX IF NOT EXISTS idx_chunks_paper_id ON chunks(paper_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_page ON chunks(paper_id, page_start);
 
+"""
+
+_VEC_SCHEMA_SQL = """
 CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(
     embedding float[768],
     +paper_id TEXT,
@@ -63,6 +71,10 @@ DELETE FROM papers WHERE title LIKE '%PDF-%'
 def apply_migrations(conn: sqlite3.Connection) -> None:
     """Apply schema (idempotent — all statements use IF NOT EXISTS)."""
     conn.executescript(SCHEMA_SQL)
+    if has_vec0_module(conn):
+        conn.executescript(_VEC_SCHEMA_SQL)
+    else:
+        logger.warning("sqlite-vec unavailable: skipping vec_chunks virtual table migration.")
     conn.executescript(_BAD_PDF_CLEANUP_SQL)
     conn.executescript(_DEDUP_SQL)
     conn.executescript(_BACKFILL_DOI_SQL)

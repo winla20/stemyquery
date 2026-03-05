@@ -8,7 +8,11 @@ from atheria.db.migrations import apply_migrations
 from atheria.db.repositories.chunk_repo import ChunkRepository
 from atheria.db.repositories.paper_repo import PaperRepository
 from atheria.index.bm25_index import BM25Index
-from atheria.index.dense_index import encode_articles, store_embeddings, clear_embeddings
+from atheria.index.dense_index import (
+    encode_articles,
+    store_embeddings,
+    clear_embeddings,
+)
 from atheria.ingest.chunker import chunk_document
 from atheria.ingest.pmc_parser import parse_pdf, parse_pmc, parse_raw_text
 from atheria.models.chunk import Chunk
@@ -99,18 +103,24 @@ def build_index(
     for chunk in all_chunks:
         chunk_repo.insert(chunk)
 
-    # Build and encode embeddings
-    articles = [
-        [" → ".join(c.section_path) or "Section", c.text]
-        for c in all_chunks
-    ]
-    print(f"Encoding {len(all_chunks)} chunks with MedCPT Article Encoder...")
-    embeddings = encode_articles(articles, batch_size=32)
+    vec_table_exists = (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='vec_chunks' LIMIT 1"
+        ).fetchone()
+        is not None
+    )
+    if vec_table_exists:
+        # Build and encode embeddings only when sqlite-vec is available.
+        articles = [[" → ".join(c.section_path) or "Section", c.text] for c in all_chunks]
+        print(f"Encoding {len(all_chunks)} chunks with MedCPT Article Encoder...")
+        embeddings = encode_articles(articles, batch_size=32)
 
-    # Store in sqlite-vec (clear existing unless appending to an existing index)
-    if not append:
-        clear_embeddings(conn)
-    store_embeddings(conn, all_chunks, embeddings)
+        # Store in sqlite-vec (clear existing unless appending to an existing index)
+        if not append:
+            clear_embeddings(conn)
+        store_embeddings(conn, all_chunks, embeddings)
+    else:
+        print("sqlite-vec unavailable on this Python build; skipping dense embedding index.")
 
     conn.commit()
     conn.close()

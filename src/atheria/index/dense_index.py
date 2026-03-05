@@ -17,6 +17,13 @@ _query_tokenizer: AutoTokenizer | None = None
 _query_model: AutoModel | None = None
 
 
+def _has_vec_table(conn: sqlite3.Connection) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='vec_chunks' LIMIT 1"
+    ).fetchone()
+    return row is not None
+
+
 def _ensure_article_model() -> None:
     global _article_tokenizer, _article_model
     if _article_model is None:
@@ -79,6 +86,8 @@ def store_embeddings(
     The +paper_id and +chunk_id are auxiliary (non-indexed) columns used
     to map KNN results back to chunks.
     """
+    if not _has_vec_table(conn):
+        return
     for chunk, embedding in zip(chunks, embeddings):
         blob = sqlite_vec.serialize_float32(embedding)
         conn.execute(
@@ -89,6 +98,8 @@ def store_embeddings(
 
 def clear_embeddings(conn: sqlite3.Connection) -> None:
     """Remove all rows from the vec_chunks table (for full re-index)."""
+    if not _has_vec_table(conn):
+        return
     conn.execute("DELETE FROM vec_chunks")
 
 
@@ -103,6 +114,8 @@ def retrieve_dense(
     Uses L2 distance; similarity = 1 / (1 + distance) to produce a
     descending score comparable to cosine similarity rankings.
     """
+    if not _has_vec_table(conn):
+        return []
     blob = sqlite_vec.serialize_float32(query_embedding)
 
     if paper_id:
@@ -125,6 +138,8 @@ def retrieve_dense(
 
 def count_embeddings(conn: sqlite3.Connection) -> int:
     """Return number of stored embeddings."""
+    if not _has_vec_table(conn):
+        return 0
     return conn.execute("SELECT COUNT(*) FROM vec_chunks").fetchone()[0]
 
 
@@ -140,5 +155,7 @@ class SqliteVecAdapter:
         self._conn = conn
 
     def retrieve(self, query: str, k: int = 50, paper_id: str | None = None) -> list[tuple[str, float]]:
+        if not _has_vec_table(self._conn):
+            return []
         vec = encode_query(query)
         return retrieve_dense(self._conn, vec, k, paper_id)
