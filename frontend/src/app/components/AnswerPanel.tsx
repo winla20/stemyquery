@@ -141,7 +141,9 @@ export function AnswerPanel({
                   <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                 </div>
 
-                <p className="text-xs text-slate-500 mb-1">{result.section_path}</p>
+                <p className="text-xs text-slate-500 mb-1">
+                  {result.section_path.split(" → ").at(-1) ?? result.section_path}
+                </p>
                 <p className="text-sm font-medium text-slate-800 mb-2 line-clamp-1">
                   {result.paper_title}
                 </p>

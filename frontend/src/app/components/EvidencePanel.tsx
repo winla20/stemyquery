@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FileText, Network, BarChart3 } from "lucide-react";
+import { FileText, Network, BarChart3, Loader2 } from "lucide-react";
 import { EvidenceGraph } from "./EvidenceGraph";
+import { useChunkContext } from "../../hooks/useChunkContext";
 import type { SectionPointer } from "../../types";
 
 type TabType = "source" | "relevance" | "graph";
@@ -8,11 +9,11 @@ type TabType = "source" | "relevance" | "graph";
 interface EvidencePanelProps {
   results: SectionPointer[];
   selectedResult: SectionPointer | null;
-  onOpenContext: (chunkId: string) => void;
 }
 
-export function EvidencePanel({ results, selectedResult, onOpenContext }: EvidencePanelProps) {
+export function EvidencePanel({ results, selectedResult }: EvidencePanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>("source");
+  const chunkCtx = useChunkContext(selectedResult?.chunk_id ?? null);
 
   const maxScore = results.length > 0
     ? Math.max(...results.map((r) => r.reranker_score))
@@ -70,21 +71,23 @@ export function EvidencePanel({ results, selectedResult, onOpenContext }: Eviden
                 <p className="text-sm font-medium text-slate-800 mb-3">
                   {selectedResult.paper_title}
                 </p>
-                {selectedResult.snippets.map((snip, i) => (
+                {chunkCtx.isLoading && (
+                  <div className="flex items-center gap-2 text-slate-500 text-xs py-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading paragraph...
+                  </div>
+                )}
+                {chunkCtx.error && (
+                  <p className="text-xs text-red-600">{chunkCtx.error}</p>
+                )}
+                {chunkCtx.context && (
                   <p
-                    key={i}
-                    className="text-sm leading-relaxed text-gray-800 mb-3 italic border-l-2 border-slate-300 pl-3"
+                    className="text-sm leading-relaxed text-gray-800 border-l-2 border-slate-300 pl-3"
                     style={{ fontFamily: "Georgia, serif" }}
                   >
-                    {snip}
+                    {chunkCtx.context.current.text}
                   </p>
-                ))}
-                <button
-                  onClick={() => onOpenContext(selectedResult.chunk_id)}
-                  className="mt-2 text-xs text-slate-700 underline hover:text-slate-900 transition-colors"
-                >
-                  Open full context →
-                </button>
+                )}
               </div>
             )}
           </div>

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { QueryHistory } from "../components/QueryHistory";
 import { AnswerPanel } from "../components/AnswerPanel";
 import { EvidencePanel } from "../components/EvidencePanel";
-import { ContextModal } from "../components/ContextModal";
 import { usePapers } from "../../hooks/usePapers";
 import { useQuery } from "../../hooks/useQuery";
 import type { SectionPointer } from "../../types";
@@ -20,7 +19,6 @@ export default function ResearchMode() {
   const { results, isLoading, error, search } = useQuery();
   const [queryHistory, setQueryHistory] = useState<HistoryItem[]>([]);
   const [selectedResult, setSelectedResult] = useState<SectionPointer | null>(null);
-  const [contextChunkId, setContextChunkId] = useState<string | null>(null);
 
   function handleSearch(query: string, paperId: string, topN: number) {
     setQueryHistory((prev) => [
@@ -58,13 +56,8 @@ export default function ResearchMode() {
         <EvidencePanel
           results={results?.results ?? []}
           selectedResult={selectedResult}
-          onOpenContext={setContextChunkId}
         />
       </div>
-
-      {contextChunkId && (
-        <ContextModal chunkId={contextChunkId} onClose={() => setContextChunkId(null)} />
-      )}
     </div>
   );
 }
